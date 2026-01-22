@@ -1,0 +1,31 @@
+{
+  "name": "atlassian-forge-axios",
+  "version": "1.0.1",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "forge",
+    "axios",
+    "atlassian",
+    "jira",
+    "confluence"
+  ],
+  "author": "",
+  "license": "MIT",
+  "description": "Axios-like HTTP client for Atlassian Forge",
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "@forge/api": "*"
+  }
+}

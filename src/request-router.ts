@@ -1,15 +1,15 @@
-import api, { route } from "@forge/api";
-import { ForgeAxiosConfig } from "./types";
+import api from "@forge/api";
+import { ForgeAxiosConfig, AsType } from "./types";
 
 interface RouterArgs {
   method: string;
-  url: string;
+  url: any; // Jira/Confluence expects route`...`
   body?: any;
   headers?: Record<string, string>;
   clientConfig: ForgeAxiosConfig;
 }
 
-function getForgeApi(as: "user" | "app") {
+function getForgeApi(as: AsType) {
   return as === "app" ? api.asApp() : api.asUser();
 }
 
@@ -31,11 +31,11 @@ export async function routeRequest({
   const forgeApi = getForgeApi(as);
 
   if (target === "jira") {
-    return forgeApi.requestJira(url as any, options);
+    return forgeApi.requestJira(url, options);
   }
 
   if (target === "confluence") {
-    return forgeApi.requestConfluence(url as any, options);
+    return forgeApi.requestConfluence(url, options);
   }
 
   if (target === "external") {

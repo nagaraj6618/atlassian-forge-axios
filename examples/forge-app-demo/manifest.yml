@@ -1,0 +1,20 @@
+modules:
+  function:
+    - key: main
+      handler: index.handler
+
+app:
+  id: ari:cloud:ecosystem::app/YOUR_APP_ID_HERE
+
+permissions:
+  scopes:
+    - read:jira-user
+    - read:jira-work
+    - write:jira-work
+    - read:confluence-content.summary
+    - read:confluence-space.summary
+
+  external:
+    fetch:
+      backend:
+        - api.github.com

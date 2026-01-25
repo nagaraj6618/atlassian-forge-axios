@@ -1,175 +1,123 @@
 # atlassian-forge-axios
 
-> Axios-like HTTP client for **Atlassian Forge**, built on top of `@forge/api`
+> Axios-like HTTP client for **Atlassian Forge**, powered by `@forge/api`
 
-`atlassian-forge-axios` provides a familiar **Axios-style API** (`get`, `post`, `put`, `patch`, `delete`) for Forge apps, while respecting Forge’s security model.
+`atlassian-forge-axios` helps Forge developers reduce repeated boilerplate when calling APIs with `@forge/api`.
 
-It removes repetitive boilerplate like manual `fetch`, `res.json()`, and error handling — while keeping Forge-safe behavior.
+✅ Write request logic once
+✅ Reuse across Jira / Confluence / External APIs
+✅ Keep responses and errors consistent
+✅ Improve readability and maintainability
 
 ---
 
-## ✨ Features
+## ✨ Why this package?
 
-* ✅ Axios-like API (`get`, `post`, `put`, `patch`, `delete`)
-* ✅ Works with:
+While building Forge apps, API calls often include repeated code:
 
-  * Jira REST APIs
-  * Confluence REST APIs
+* checking status (`res.ok`)
+* parsing body (`res.json()`)
+* writing error handling again and again
+
+This package gives you an Axios-like interface:
+
+```ts
+const res = await client.get(route`/rest/api/3/myself`);
+console.log(res.data);
+```
+
+---
+
+## ✅ Features
+
+* ✅ Axios-style API: `get / post / put / patch / delete`
+* ✅ Supports:
+
+  * Jira REST APIs (`requestJira`)
+  * Confluence REST APIs (`requestConfluence`)
   * External APIs (`api.fetch`)
-* ✅ Automatic JSON parsing
-* ✅ Axios-style error handling
+* ✅ Auto JSON parsing
+* ✅ Consistent response shape
+* ✅ Consistent error shape (`err.response`)
+* ✅ **Interceptors** (request / response / error)
 * ✅ TypeScript-first
-* ✅ Zero runtime dependencies
-* ✅ Forge-runtime compatible
+* ✅ Open-source and lightweight
 
 ---
 
-## 📦 Installation
+## 📦 Install
 
 ```bash
 npm install atlassian-forge-axios
 ```
 
-> ⚠️ This package works **only inside Atlassian Forge apps**
+> ⚠️ Works only inside Atlassian Forge apps
 
 ---
 
-## 🔴 Important Forge Limitation (READ THIS)
+## 🔴 Important Forge Note (`route` is required)
 
-### Why do I still need `route` for Jira / Confluence?
+Forge requires Jira & Confluence URLs to be wrapped using `route` **at the call site**.
 
-Forge requires **Jira and Confluence API URLs** to be wrapped with `route` **at the call site**.
-
-This is **not a limitation of this library**, but a **Forge security requirement**.
-
-❌ You cannot fully hide `route` inside a dependency.
-✅ This library still simplifies request handling, responses, and errors.
-
-### Rule Summary
-
-| Target          | `route` Required |
-| --------------- | ---------------- |
-| Jira APIs       | ✅ Yes            |
-| Confluence APIs | ✅ Yes            |
-| External APIs   | ❌ No             |
-
----
-
-## 🚀 Usage
-
-
-### 1 Jira API Example (with `route`)
+✅ Jira/Confluence:
 
 ```ts
-import Resolver from "@forge/resolver";
-import { route } from "@forge/api";
-import forgeAxios from "atlassian-forge-axios";
+client.get(route`/rest/api/3/myself`);
+```
 
-const resolver = new Resolver();
+✅ External APIs (no route):
+
+```ts
+client.get("/users/octocat");
+```
+
+---
+
+## 🎯 Quick Start
+
+### Jira Client
+
+```ts
+import forgeAxios from "atlassian-forge-axios";
+import { route } from "@forge/api";
 
 const jira = forgeAxios({
   target: "jira",
   as: "user",
 });
 
-resolver.define("getMyself", async () => {
-  const res = await jira.get(route`/rest/api/3/myself`);
-  return {
-    name: res.data.displayName,
-  };
-});
-
-export const handler = resolver.getDefinitions();
+const res = await jira.get(route`/rest/api/3/myself`);
+console.log(res.data);
 ```
 
 ---
 
-### 2 Jira POST / PUT / DELETE Example
+## ⚙️ Creating Clients
+
+### Jira Client
 
 ```ts
-resolver.define("commentCrud", async () => {
-  const issueKey = "TEST-1";
-
-  // POST – create comment
-  const created = await jira.post(
-    route`/rest/api/3/issue/${issueKey}/comment`,
-    {
-      body: {
-        type: "doc",
-        version: 1,
-        content: [
-          {
-            type: "paragraph",
-            content: [{ type: "text", text: "Created via atlassian-forge-axios" }],
-          },
-        ],
-      },
-    }
-  );
-
-  const commentId = created.data.id;
-
-  // PUT – update comment
-  await jira.put(
-    route`/rest/api/3/issue/${issueKey}/comment/${commentId}`,
-    {
-      body: {
-        type: "doc",
-        version: 1,
-        content: [
-          {
-            type: "paragraph",
-            content: [{ type: "text", text: "Updated via atlassian-forge-axios" }],
-          },
-        ],
-      },
-    }
-  );
-
-  // DELETE – delete comment
-  await jira.delete(
-    route`/rest/api/3/issue/${issueKey}/comment/${commentId}`
-  );
-
-  return { success: true };
-});
+const jira = forgeAxios({ target: "jira", as: "user" });
 ```
 
----
+### Confluence Client
 
-### 3 External API Example (NO `route` needed)
+```ts
+const confluence = forgeAxios({ target: "confluence", as: "app" });
+```
+
+### External Client
 
 ```ts
 const external = forgeAxios({
   target: "external",
   baseURL: "https://api.github.com",
 });
-
-resolver.define("githubUser", async () => {
-  const res = await external.get("/users/octocat");
-  return {
-    login: res.data.login,
-    id: res.data.id,
-  };
-});
 ```
 
 ---
 
-## 🔧 Client Configuration
-
-```ts
-forgeAxios({
-  target: "jira" | "confluence" | "external",
-  as?: "user" | "app",        // default: "user"
-  baseURL?: string,           // required for external APIs
-  headers?: Record<string, string>,
-});
-```
-
----
-
-## 📡 Supported Methods
+## 📌 Supported Methods
 
 ```ts
 client.get(url, config?)
@@ -181,27 +129,40 @@ client.delete(url, config?)
 
 ---
 
-## 📦 Response Format (Axios-like)
+## ✅ Response Format
+
+Every request returns:
 
 ```ts
 {
-  data: any,
-  status: number,
-  statusText: string,
-  headers: object,
-  config: object,
-  request: null
+  data,
+  status,
+  statusText,
+  headers,
+  config,
+  request
 }
+```
+
+Example:
+
+```ts
+const res = await jira.get(route`/rest/api/3/myself`);
+console.log(res.status);
+console.log(res.data);
 ```
 
 ---
 
 ## ❌ Error Handling
 
+Errors follow Axios-style:
+
 ```ts
 try {
   await jira.get(route`/rest/api/3/issue/INVALID`);
 } catch (err: any) {
+  console.log(err.message);
   console.log(err.response.status);
   console.log(err.response.data);
 }
@@ -209,34 +170,220 @@ try {
 
 ---
 
-## ⚠️ Forge Runtime Requirement
-
-`atlassian-forge-axios` relies on `@forge/api`, which is **provided by the Forge runtime**.
-
-You **do not need to install `@forge/api` manually**.
+# ✅ Examples (Real Forge Usage)
 
 ---
 
-## 🗺️ Roadmap
+## ✅ Example 1: Jira GET (User Profile)
 
-### v1.0.1 (current)
+```ts
+import { route } from "@forge/api";
 
-* README clarification about `route`
-* Stable Jira / Confluence / External support
-
-
-
-## 🤝 Contributing
-
-Contributions are welcome!
-
-* Issues for bugs or feature requests
-* PRs with clear explanations
-* Keep Forge runtime constraints in mind
+const res = await jira.get(route`/rest/api/3/myself`);
+console.log(res.data.displayName);
+```
 
 ---
 
-## 📄 License
+## ✅ Example 2: Jira Search Issues
+
+```ts
+import { route } from "@forge/api";
+
+const res = await jira.get(route`/rest/api/3/search?maxResults=5`);
+console.log(res.data.issues);
+```
+
+---
+
+## ✅ Example 3: Jira POST Create Comment (Safe CRUD)
+
+```ts
+import { route } from "@forge/api";
+
+const issueKey = "TEST-1";
+
+const created = await jira.post(
+  route`/rest/api/3/issue/${issueKey}/comment`,
+  {
+    body: {
+      type: "doc",
+      version: 1,
+      content: [
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "Comment created via atlassian-forge-axios ✅" }],
+        },
+      ],
+    },
+  }
+);
+
+console.log("CommentId:", created.data.id);
+```
+
+---
+
+## ✅ Example 4: Jira PUT Update Comment
+
+```ts
+import { route } from "@forge/api";
+
+const issueKey = "TEST-1";
+const commentId = "10001";
+
+await jira.put(
+  route`/rest/api/3/issue/${issueKey}/comment/${commentId}`,
+  {
+    body: {
+      type: "doc",
+      version: 1,
+      content: [
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "Updated via atlassian-forge-axios ✅" }],
+        },
+      ],
+    },
+  }
+);
+
+console.log("Comment updated ✅");
+```
+
+---
+
+## ✅ Example 5: Jira DELETE Comment
+
+```ts
+import { route } from "@forge/api";
+
+const issueKey = "TEST-1";
+const commentId = "10001";
+
+await jira.delete(route`/rest/api/3/issue/${issueKey}/comment/${commentId}`);
+
+console.log("Comment deleted ✅");
+```
+
+---
+
+## ✅ Example 6: External API (GitHub)
+
+```ts
+const github = forgeAxios({
+  target: "external",
+  baseURL: "https://api.github.com",
+});
+
+const res = await github.get("/users/octocat");
+console.log(res.data.login);
+```
+
+---
+
+# ✅ Interceptors (v1.2.0)
+
+Interceptors allow you to write logic once and apply it to all API calls.
+
+---
+
+## ✅ Request Interceptor (Logging + Headers)
+
+```ts
+jira.interceptors.request.use((config) => {
+  console.log("➡️ Request:", config.method, config.url);
+
+  return {
+    ...config,
+    headers: {
+      ...config.headers,
+      "X-Client": "atlassian-forge-axios",
+    },
+  };
+});
+```
+
+---
+
+## ✅ Response Interceptor (Logging)
+
+```ts
+jira.interceptors.response.use((res) => {
+  console.log("✅ Response status:", res.status);
+  return res;
+});
+```
+
+---
+
+## ✅ Error Interceptor (Central Error Logging)
+
+```ts
+jira.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    console.log("❌ Request failed:", err.response?.status);
+    return err;
+  }
+);
+```
+
+---
+
+# 🧱 Recommended Project Structure (Forge App)
+
+If you use this in a bigger Forge app, this structure stays clean:
+
+```
+src/
+  api/
+    jiraClient.ts
+    confluenceClient.ts
+    externalClient.ts
+  resolvers/
+    issueResolver.ts
+    userResolver.ts
+  index.ts
+```
+
+### Example `jiraClient.ts`
+
+```ts
+import forgeAxios from "atlassian-forge-axios";
+
+export const jira = forgeAxios({
+  target: "jira",
+  as: "user",
+});
+```
+
+---
+
+# 📌 Roadmap
+
+### v1.2.0 ✅
+
+* Interceptors
+* Better error model
+* Better TypeScript response typing
+* Multiple examples
+
+### Next
+
+* Retry support (429/502/503)
+* Timeout support
+* Better docs + example Forge app template
+
+---
+
+# 🤝 Contributing
+
+PRs and issues are welcome 🙌
+If you find bugs or want new features, open an issue with a minimal example.
+
+---
+
+# 📄 License
 
 MIT License
-

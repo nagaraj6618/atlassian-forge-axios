@@ -1,56 +1,174 @@
-import { ForgeAxiosConfig, RequestConfig } from "./types";
+import {
+  ForgeAxiosClient,
+  ForgeAxiosConfig,
+  RequestConfig,
+  RequestInterceptor,
+  ResponseInterceptor,
+  ResponseErrorInterceptor,
+  ForgeAxiosResponse,
+} from "./types";
 import { routeRequest } from "./request-router";
 import { normalizeResponse } from "./response-normalizer";
 import { ForgeAxiosError } from "./error";
 
-async function request(
+function createInterceptorManager() {
+  const requestInterceptors: RequestInterceptor[] = [];
+  const responseInterceptors: Array<{
+    onSuccess: ResponseInterceptor;
+    onError?: ResponseErrorInterceptor;
+  }> = [];
+
+  return {
+    requestInterceptors,
+    responseInterceptors,
+    interceptors: {
+      request: {
+        use: (fn: RequestInterceptor) => {
+          requestInterceptors.push(fn);
+        },
+      },
+      response: {
+        use: (onSuccess: ResponseInterceptor, onError?: ResponseErrorInterceptor) => {
+          responseInterceptors.push({ onSuccess, onError });
+        },
+      },
+    },
+  };
+}
+
+async function request<T = any>(
   method: string,
-  url: string,
+  url: any,
   data: any,
   config: RequestConfig,
-  clientConfig: ForgeAxiosConfig
-) {
+  clientConfig: ForgeAxiosConfig,
+  requestInterceptors: RequestInterceptor[],
+  responseInterceptors: Array<{
+    onSuccess: ResponseInterceptor;
+    onError?: ResponseErrorInterceptor;
+  }>
+): Promise<ForgeAxiosResponse<T>> {
+  // Apply request interceptors
+  let finalConfig: RequestConfig & { method: string; url: any } = {
+    ...(config || {}),
+    method,
+    url,
+  };
+
+  for (const interceptor of requestInterceptors) {
+    finalConfig = interceptor(finalConfig);
+  }
+
   const headers = {
     "Content-Type": "application/json",
     ...clientConfig.headers,
-    ...config?.headers,
+    ...finalConfig.headers,
   };
 
-  const body =
-    data !== undefined ? JSON.stringify(data) : undefined;
+  const body = data !== undefined ? JSON.stringify(data) : undefined;
 
   const res = await routeRequest({
-    method,
-    url,
+    method: finalConfig.method,
+    url: finalConfig.url,
     body,
     headers,
     clientConfig,
   });
 
-  const normalized = await normalizeResponse(res, config);
+  const normalized = await normalizeResponse<T>(
+    res,
+    { headers: finalConfig.headers },
+    { method: finalConfig.method, url: finalConfig.url, target: clientConfig.target }
+  );
 
   if (!res.ok) {
-    throw new ForgeAxiosError("Request failed", normalized);
+    let err: any = new ForgeAxiosError("Request failed", {
+      method: finalConfig.method,
+      url: finalConfig.url,
+      target: clientConfig.target,
+      response: normalized,
+    });
+
+    // Apply response error interceptors
+    for (const interceptor of responseInterceptors) {
+      if (interceptor.onError) {
+        err = interceptor.onError(err);
+      }
+    }
+
+    throw err;
   }
 
-  return normalized;
+  // Apply response success interceptors
+  let finalResponse: any = normalized;
+
+  for (const interceptor of responseInterceptors) {
+    finalResponse = interceptor.onSuccess(finalResponse);
+  }
+
+  return finalResponse;
 }
 
-export function createClient(clientConfig: ForgeAxiosConfig) {
+export function createClient(clientConfig: ForgeAxiosConfig): ForgeAxiosClient {
+  const { requestInterceptors, responseInterceptors, interceptors } =
+    createInterceptorManager();
+
   return {
-    get: (url: string, config: RequestConfig = {}) =>
-      request("GET", url, undefined, config, clientConfig),
+    interceptors,
 
-    delete: (url: string, config: RequestConfig = {}) =>
-      request("DELETE", url, undefined, config, clientConfig),
+    get: <T = any>(url: any, config: RequestConfig = {}) =>
+      request<T>(
+        "GET",
+        url,
+        undefined,
+        config,
+        clientConfig,
+        requestInterceptors,
+        responseInterceptors
+      ),
 
-    post: (url: string, data?: any, config: RequestConfig = {}) =>
-      request("POST", url, data, config, clientConfig),
+    delete: <T = any>(url: any, config: RequestConfig = {}) =>
+      request<T>(
+        "DELETE",
+        url,
+        undefined,
+        config,
+        clientConfig,
+        requestInterceptors,
+        responseInterceptors
+      ),
 
-    put: (url: string, data?: any, config: RequestConfig = {}) =>
-      request("PUT", url, data, config, clientConfig),
+    post: <T = any>(url: any, data?: any, config: RequestConfig = {}) =>
+      request<T>(
+        "POST",
+        url,
+        data,
+        config,
+        clientConfig,
+        requestInterceptors,
+        responseInterceptors
+      ),
 
-    patch: (url: string, data?: any, config: RequestConfig = {}) =>
-      request("PATCH", url, data, config, clientConfig),
+    put: <T = any>(url: any, data?: any, config: RequestConfig = {}) =>
+      request<T>(
+        "PUT",
+        url,
+        data,
+        config,
+        clientConfig,
+        requestInterceptors,
+        responseInterceptors
+      ),
+
+    patch: <T = any>(url: any, data?: any, config: RequestConfig = {}) =>
+      request<T>(
+        "PATCH",
+        url,
+        data,
+        config,
+        clientConfig,
+        requestInterceptors,
+        responseInterceptors
+      ),
   };
 }

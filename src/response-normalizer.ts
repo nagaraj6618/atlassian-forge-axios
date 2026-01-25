@@ -1,13 +1,14 @@
-import { ForgeAxiosResponse, RequestConfig } from "./types";
+import { ForgeAxiosResponse, RequestConfig, TargetType } from "./types";
 
-export async function normalizeResponse(
-  res: Response,
-  config: RequestConfig
-): Promise<ForgeAxiosResponse> {
+export async function normalizeResponse<T = any>(
+  res: any,
+  config: RequestConfig,
+  meta: { method: string; url: any; target: TargetType }
+): Promise<ForgeAxiosResponse<T>> {
   let data: any = null;
 
   if (res.status !== 204) {
-    const contentType = res.headers.get("content-type") || "";
+    const contentType = res.headers?.get?.("content-type") || "";
     if (contentType.includes("application/json")) {
       data = await res.json();
     } else {
@@ -20,7 +21,12 @@ export async function normalizeResponse(
     status: res.status,
     statusText: res.statusText,
     headers: Object.fromEntries(res.headers.entries()),
-    config,
+    config: {
+      ...config,
+      method: meta.method,
+      url: meta.url,
+      target: meta.target,
+    },
     request: null,
   };
 }

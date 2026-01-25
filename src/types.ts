@@ -6,10 +6,12 @@ export interface ForgeAxiosConfig {
   as?: AsType;
   baseURL?: string;
   headers?: Record<string, string>;
+  timeLimit?: number;
 }
 
 export interface RequestConfig {
   headers?: Record<string, string>;
+  timeLimit?: number;
 }
 
 export interface ForgeAxiosResponse<T = any> {

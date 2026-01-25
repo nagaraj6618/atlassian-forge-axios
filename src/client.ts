@@ -10,6 +10,7 @@ import {
 import { routeRequest } from "./request-router";
 import { normalizeResponse } from "./response-normalizer";
 import { ForgeAxiosError } from "./error";
+import {withTimeout} from "./timeout";
 
 function createInterceptorManager() {
   const requestInterceptors: RequestInterceptor[] = [];
@@ -67,13 +68,19 @@ async function request<T = any>(
 
   const body = data !== undefined ? JSON.stringify(data) : undefined;
 
-  const res = await routeRequest({
-    method: finalConfig.method,
-    url: finalConfig.url,
-    body,
-    headers,
-    clientConfig,
-  });
+  const timeoutMs = finalConfig.timeLimit ?? clientConfig.timeLimit;
+
+  const res = await withTimeout(
+    routeRequest({
+      method: finalConfig.method,
+      url: finalConfig.url,
+      body,
+      headers,
+      clientConfig,
+    }),
+    timeoutMs,
+    `Request timed out: ${finalConfig.method} ${String(finalConfig.url)}`
+  );
 
   const normalized = await normalizeResponse<T>(
     res,

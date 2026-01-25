@@ -2,11 +2,11 @@
 
 > Axios-like HTTP client for **Atlassian Forge**, powered by `@forge/api`
 
-`atlassian-forge-axios` helps Forge developers reduce repeated boilerplate when calling APIs with `@forge/api`.
+`atlassian-forge-axios` helps Forge developers reduce repeated boilerplate when calling APIs using `@forge/api`.
 
-✅ Write request logic once
-✅ Reuse across Jira / Confluence / External APIs
-✅ Keep responses and errors consistent
+✅ Write request logic once  
+✅ Reuse across Jira / Confluence / External APIs  
+✅ Keep responses and errors consistent  
 ✅ Improve readability and maintainability
 
 ---
@@ -15,16 +15,16 @@
 
 While building Forge apps, API calls often include repeated code:
 
-* checking status (`res.ok`)
-* parsing body (`res.json()`)
-* writing error handling again and again
+- checking status (`res.ok`)
+- parsing body (`res.json()`)
+- writing error handling again and again
 
-This package gives you an Axios-like interface:
+This package provides an Axios-like interface:
 
 ```ts
 const res = await client.get(route`/rest/api/3/myself`);
 console.log(res.data);
-```
+````
 
 ---
 
@@ -40,6 +40,7 @@ console.log(res.data);
 * ✅ Consistent response shape
 * ✅ Consistent error shape (`err.response`)
 * ✅ **Interceptors** (request / response / error)
+* ✅ **Timeout / timeLimit** support (v1.2.1)
 * ✅ TypeScript-first
 * ✅ Open-source and lightweight
 
@@ -170,6 +171,35 @@ try {
 
 ---
 
+# ⏱️ Timeout / timeLimit (v1.2.1)
+
+Forge apps should avoid waiting forever for an API response.
+You can now define a **time limit in milliseconds**.
+
+## ✅ Client-level default timeout
+
+```ts
+const jira = forgeAxios({
+  target: "jira",
+  as: "user",
+  timeLimit: 5000, // 5 seconds
+});
+```
+
+## ✅ Per-request timeout override
+
+```ts
+const res = await jira.get(route`/rest/api/3/myself`, {
+  timeLimit: 2000, // 2 seconds
+});
+```
+
+> Note: Timeout will reject the request after the time limit is reached.
+> In Forge runtime, the underlying request may still run in the background,
+> but your function will stop waiting and continue execution safely.
+
+---
+
 # ✅ Examples (Real Forge Usage)
 
 ---
@@ -196,79 +226,7 @@ console.log(res.data.issues);
 
 ---
 
-## ✅ Example 3: Jira POST Create Comment (Safe CRUD)
-
-```ts
-import { route } from "@forge/api";
-
-const issueKey = "TEST-1";
-
-const created = await jira.post(
-  route`/rest/api/3/issue/${issueKey}/comment`,
-  {
-    body: {
-      type: "doc",
-      version: 1,
-      content: [
-        {
-          type: "paragraph",
-          content: [{ type: "text", text: "Comment created via atlassian-forge-axios ✅" }],
-        },
-      ],
-    },
-  }
-);
-
-console.log("CommentId:", created.data.id);
-```
-
----
-
-## ✅ Example 4: Jira PUT Update Comment
-
-```ts
-import { route } from "@forge/api";
-
-const issueKey = "TEST-1";
-const commentId = "10001";
-
-await jira.put(
-  route`/rest/api/3/issue/${issueKey}/comment/${commentId}`,
-  {
-    body: {
-      type: "doc",
-      version: 1,
-      content: [
-        {
-          type: "paragraph",
-          content: [{ type: "text", text: "Updated via atlassian-forge-axios ✅" }],
-        },
-      ],
-    },
-  }
-);
-
-console.log("Comment updated ✅");
-```
-
----
-
-## ✅ Example 5: Jira DELETE Comment
-
-```ts
-import { route } from "@forge/api";
-
-const issueKey = "TEST-1";
-const commentId = "10001";
-
-await jira.delete(route`/rest/api/3/issue/${issueKey}/comment/${commentId}`);
-
-console.log("Comment deleted ✅");
-```
-
----
-
-## ✅ Example 6: External API (GitHub)
+## ✅ Example 3: External API (GitHub)
 
 ```ts
 const github = forgeAxios({
@@ -335,7 +293,7 @@ jira.interceptors.response.use(
 
 If you use this in a bigger Forge app, this structure stays clean:
 
-```
+```txt
 src/
   api/
     jiraClient.ts
@@ -347,7 +305,7 @@ src/
   index.ts
 ```
 
-### Example `jiraClient.ts`
+Example `jiraClient.ts`
 
 ```ts
 import forgeAxios from "atlassian-forge-axios";
@@ -360,20 +318,24 @@ export const jira = forgeAxios({
 
 ---
 
+## Examples
+
+Check `/examples/forge-app-demo` for working Forge resolver examples.
+
+---
+
 # 📌 Roadmap
 
-### v1.2.0 ✅
+### v1.2.1 
 
-* Interceptors
-* Better error model
-* Better TypeScript response typing
-* Multiple examples
+* Timeout / timeLimit support
+* Better production stability
 
 ### Next
 
 * Retry support (429/502/503)
-* Timeout support
-* Better docs + example Forge app template
+* Advanced logging hooks
+* More examples and templates
 
 ---
 
@@ -387,3 +349,4 @@ If you find bugs or want new features, open an issue with a minimal example.
 # 📄 License
 
 MIT License
+

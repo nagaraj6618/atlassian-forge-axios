@@ -9,6 +9,10 @@
 ✅ Keep responses and errors consistent  
 ✅ Improve readability and maintainability
 
+# Architecture
+<img width="738" height="671" alt="image" src="https://github.com/user-attachments/assets/5977fc44-7f9d-4511-8206-97408ca43a82" />
+
+
 ---
 
 ## ✨ Why this package?
